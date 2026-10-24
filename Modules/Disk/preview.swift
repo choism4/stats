@@ -417,7 +417,7 @@ internal class Preview: PreviewWrapper {
                     } else {
                         let row = DiskRow(entry.drive, kind: entry.kind)
                         let isFirst = self.disks.numberOfRows == 0
-                        if !self.diskRows.isEmpty {
+                        if !self.diskRows.isEmpty && entry.kind != .volume {
                             let sep = NSView()
                             sep.wantsLayer = true
                             sep.layer?.backgroundColor = NSColor.separatorColor.withAlphaComponent(0.05).cgColor
@@ -536,7 +536,7 @@ internal class DiskRow {
     
     private let nameField: NSButton
     private let capacityField: LegendView
-    private let bar: BarChartView = BarChartView(size: 6, horizontal: true)
+    private let bar: BarChartView
     private let capacityView: NSStackView = NSStackView()
     private let fileSystemField: NSTextField
     private let ejectButton: NSButton = NSButton()
@@ -546,7 +546,14 @@ internal class DiskRow {
 
     // NSGridView unhides its cells, so a volume row puts an empty view in the eject column
     private lazy var ejectCell: NSView = self.kind == .volume ? NSView() : self.ejectButton
-    public var cells: [NSView] { [self.nameField, self.capacityView, self.fileSystemField, self.ejectCell] }
+    // A volume row is indented under its container
+    private lazy var nameCell: NSView = {
+        guard self.kind == .volume else { return self.nameField }
+        let view = NSStackView(views: [self.nameField])
+        view.edgeInsets = NSEdgeInsets(top: 0, left: 14, bottom: 0, right: 0)
+        return view
+    }()
+    public var cells: [NSView] { [self.nameCell, self.capacityView, self.fileSystemField, self.ejectCell] }
     
     init(_ drive: drive, kind: Kind = .disk) {
         self.uuid = drive.uuid
@@ -562,12 +569,13 @@ internal class DiskRow {
         self.nameField.toolTip = drive.mediaName
         self.nameField.title = drive.mediaName
         self.nameField.cell?.truncatesLastVisibleLine = true
-        self.nameField.font = .systemFont(ofSize: 11, weight: kind == .volume ? .regular : .semibold)
+        self.nameField.font = kind == .volume ? .systemFont(ofSize: 10, weight: .regular) : .systemFont(ofSize: 11, weight: .semibold)
         if kind == .volume {
             self.nameField.contentTintColor = .secondaryLabelColor
         }
+        self.bar = BarChartView(size: kind == .volume ? 4 : 6, horizontal: true)
         
-        self.fileSystemField = LabelField(drive.fileSystem.uppercased())
+        self.fileSystemField = LabelField(kind == .volume ? "" : drive.fileSystem.uppercased())
         self.fileSystemField.font = .systemFont(ofSize: 10, weight: .regular)
         self.fileSystemField.textColor = .tertiaryLabelColor
         
@@ -605,7 +613,7 @@ internal class DiskRow {
             self.nameField.title = name
             self.nameField.toolTip = name
         }
-        let fs = drive.fileSystem.uppercased()
+        let fs = self.kind == .volume ? "" : drive.fileSystem.uppercased()
         if self.fileSystemField.stringValue != fs {
             self.fileSystemField.stringValue = fs
         }
@@ -661,7 +669,10 @@ private class LegendView: NSStackView {
         self.toolTip = usedOnly ? nil : localizedString("Switch view")
         
         let legendField = TextView()
-        legendField.font = NSFont.systemFont(ofSize: 11, weight: .light)
+        legendField.font = NSFont.systemFont(ofSize: usedOnly ? 10 : 11, weight: .light)
+        if usedOnly {
+            legendField.textColor = .secondaryLabelColor
+        }
         legendField.stringValue = self.legend(free: free)
         legendField.cell?.truncatesLastVisibleLine = true
         

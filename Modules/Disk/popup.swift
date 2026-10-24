@@ -354,16 +354,19 @@ internal class DiskView: NSStackView {
         let innerWidth: CGFloat = width - (Constants.Popup.margins * 2)
         self.nameView = NameView(width: innerWidth, uuid: d.uuid, name: self.name, path: d.path)
         if volumes.count > 1 {
-            self.volumesView = VolumesView(width: innerWidth, volumes: volumes, size: d.size)
+            self.volumesView = VolumesView(width: innerWidth, volumes: volumes)
         }
         self.chartView = ChartView(width: innerWidth)
         self.barView = BarChartView(frame: NSRect(x: 0, y: 0, width: innerWidth, height: 8), horizontal: true)
         self.barView.widthAnchor.constraint(equalToConstant: innerWidth).isActive = true
         self.barView.heightAnchor.constraint(equalToConstant: 8).isActive = true
-        if d.size != 0 {
+        if volumes.count > 1 {
+            self.barView.setValues(volumeSegments(volumes, size: d.size))
+        } else if d.size != 0 {
             self.barView.setValue(ColorValue(Double(d.size - d.free) / Double(d.size)))
         }
-        self.legendView = LegendView(width: innerWidth, id: "\(d.mediaName)_\(d.path?.absoluteString ?? "")", size: d.size, free: d.free)
+        // A grouped card's legend is the used space its volume rows add up to
+        self.legendView = LegendView(width: innerWidth, id: "\(d.mediaName)_\(d.path?.absoluteString ?? "")", size: d.size, free: volumes.count > 1 ? d.size - volumesUsed(volumes) : d.free, usedOnly: volumes.count > 1)
         self.detailsView = DetailsView(width: innerWidth, details: d)
         
         super.init(frame: NSRect(x: 0, y: 0, width: width, height: 0))
@@ -387,7 +390,7 @@ internal class DiskView: NSStackView {
         self.addArrangedSubview(self.barView)
         self.addArrangedSubview(self.legendView)
         if let volumesView = self.volumesView {
-            volumesView.update(volumes, color: self.mainColor)
+            volumesView.update(volumes)
             self.addArrangedSubview(volumesView)
         }
         self.addArrangedSubview(self.detailsView)
@@ -404,11 +407,13 @@ internal class DiskView: NSStackView {
     }
     
     public func update(_ value: drive, volumes: [drive]) {
-        self.legendView.update(free: value.free)
-        if size != 0 {
+        self.legendView.update(free: self.volumesView != nil ? self.size - volumesUsed(volumes) : value.free)
+        if self.volumesView != nil {
+            self.barView.setValues(volumeSegments(volumes, size: self.size))
+        } else if size != 0 {
             self.barView.setValue(ColorValue(Double(self.size - value.free) / Double(self.size), color: self.mainColor))
         }
-        self.volumesView?.update(volumes, color: self.mainColor)
+        self.volumesView?.update(volumes)
         self.detailsView.update(details: value)
     }
     
@@ -639,23 +644,25 @@ private class LegendView: NSView {
     private let size: Int64
     private var free: Int64
     private let id: String
+    private let usedOnly: Bool
     private let cache = PopupCache<Int64>()
     
     private var showUsedSpace: Bool {
-        get { Store.shared.bool(key: "\(self.id)_usedSpace", defaultValue: false) }
+        get { self.usedOnly || Store.shared.bool(key: "\(self.id)_usedSpace", defaultValue: false) }
         set { Store.shared.set(key: "\(self.id)_usedSpace", value: newValue) }
     }
     
     private var legendField: NSTextField? = nil
     private var percentageField: NSTextField? = nil
     
-    public init(width: CGFloat, id: String, size: Int64, free: Int64) {
+    public init(width: CGFloat, id: String, size: Int64, free: Int64, usedOnly: Bool = false) {
         self.id = id
         self.size = size
         self.free = free
+        self.usedOnly = usedOnly
         
         super.init(frame: CGRect(x: 0, y: 0, width: width, height: 16))
-        self.toolTip = localizedString("Switch view")
+        self.toolTip = usedOnly ? nil : localizedString("Switch view")
         
         let height: CGFloat = 14
         let view: NSView = NSView(frame: NSRect(x: 0, y: 0, width: self.frame.width, height: self.frame.height))
@@ -743,6 +750,7 @@ private class LegendView: NSView {
     }
     
     override func mouseEntered(with: NSEvent) {
+        guard !self.usedOnly else { return }
         NSCursor.pointingHand.set()
     }
     
@@ -751,6 +759,7 @@ private class LegendView: NSView {
     }
     
     override func mouseDown(with: NSEvent) {
+        guard !self.usedOnly else { return }
         self.showUsedSpace = !self.showUsedSpace
         
         if let view = self.legendField {
@@ -762,42 +771,40 @@ private class LegendView: NSView {
     }
 }
 
+// Legend of the card's segmented bar: one row per volume with its color and used space
 private class VolumesView: NSStackView {
-    private let size: Int64
-    private var rows: [String: (bar: BarChartView, value: NSTextField)] = [:]
+    private var rows: [String: NSTextField] = [:]
     
-    public init(width: CGFloat, volumes: [drive], size: Int64) {
-        self.size = size
+    public init(width: CGFloat, volumes: [drive]) {
         let rowHeight: CGFloat = 16
         super.init(frame: NSRect(x: 0, y: 0, width: width, height: rowHeight * CGFloat(volumes.count)))
         
         self.orientation = .vertical
         self.spacing = 0
         
-        for v in volumes {
+        for (i, v) in volumes.enumerated() {
+            let colorView = ColorBlock(color: volumeColor(i))
+            
             let nameField = TextView()
             nameField.font = NSFont.systemFont(ofSize: 11, weight: .light)
             nameField.stringValue = v.mediaName
             nameField.toolTip = v.mediaName
             nameField.cell?.truncatesLastVisibleLine = true
-            nameField.widthAnchor.constraint(equalToConstant: width * 0.4).isActive = true
-            
-            let bar = BarChartView(frame: NSRect(x: 0, y: 0, width: 0, height: 6), horizontal: true)
-            bar.heightAnchor.constraint(equalToConstant: 6).isActive = true
             
             let valueField = TextView()
             valueField.font = NSFont.systemFont(ofSize: 11, weight: .regular)
             valueField.alignment = .trailing
             valueField.widthAnchor.constraint(equalToConstant: 60).isActive = true
             
-            let row = NSStackView(views: [nameField, bar, valueField])
+            let row = NSStackView(views: [colorView, nameField, NSView(), valueField])
             row.orientation = .horizontal
             row.alignment = .centerY
             row.spacing = Constants.Popup.spacing
+            row.widthAnchor.constraint(equalToConstant: width).isActive = true
             row.heightAnchor.constraint(equalToConstant: rowHeight).isActive = true
             
             self.addArrangedSubview(row)
-            self.rows[v.uuid] = (bar, valueField)
+            self.rows[v.uuid] = valueField
         }
         
         self.widthAnchor.constraint(equalToConstant: self.frame.width).isActive = true
@@ -808,13 +815,9 @@ private class VolumesView: NSStackView {
         fatalError("init(coder:) has not been implemented")
     }
     
-    public func update(_ volumes: [drive], color: NSColor) {
+    public func update(_ volumes: [drive]) {
         for v in volumes {
-            guard let row = self.rows[v.uuid] else { continue }
-            row.value.stringValue = v.used.map({ DiskSize($0).getReadableMemory() }) ?? "-"
-            if self.size != 0 {
-                row.bar.setValue(ColorValue(Double(v.used ?? 0) / Double(self.size), color: color))
-            }
+            self.rows[v.uuid]?.stringValue = v.used.map({ DiskSize($0).getReadableMemory() }) ?? "-"
         }
     }
 }

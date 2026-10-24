@@ -89,7 +89,22 @@ public struct drive: Codable {
     }
 }
 
+// One bar segment and legend color per volume of a container, in list order
+internal func volumeColor(_ index: Int) -> NSColor {
+    let palette: [NSColor] = [.systemBlue, .systemPurple, .systemOrange, .systemTeal, .systemPink, .systemGreen, .systemIndigo, .systemBrown]
+    return palette[index % palette.count]
+}
+
+internal func volumeSegments(_ volumes: [drive], size: Int64) -> [ColorValue] {
+    guard size > 0 else { return [] }
+    return volumes.enumerated().map { ColorValue(Double($1.used ?? 0) / Double(size), color: volumeColor($0)) }
+}
+
 // Volumes of one APFS container share its free space and I/O, so they are shown together
+internal func volumesUsed(_ volumes: [drive]) -> Int64 {
+    volumes.reduce(0) { $0 + ($1.used ?? 0) }
+}
+
 internal func containerGroups(_ drives: [drive], grouped: Bool) -> [[drive]] {
     var result: [[drive]] = []
     var index: [String: Int] = [:]

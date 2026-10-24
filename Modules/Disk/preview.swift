@@ -366,14 +366,14 @@ internal class Preview: PreviewWrapper {
                 let external = value.filter(where: { $0.removable }).count
                 self.allDisks?.setSubtitle("\(mounted) \(localizedString("mounted")) · \(external) \(localizedString("removable"))")
                 
-                var entries: [(key: String, drive: drive, kind: DiskRow.Kind)] = []
+                var entries: [(key: String, drive: drive, kind: DiskRow.Kind, volumes: [drive], color: NSColor?)] = []
                 let grouped = Store.shared.bool(key: "\(ModuleType.disk.stringValue)_groupVolumes", defaultValue: true)
                 for group in containerGroups(drives, grouped: grouped) {
                     if group.count > 1, let container = group[0].container {
-                        entries.append(("container:\(container)", group[0], .container))
-                        entries += group.map { ("volume:\($0.uuid)", $0, .volume) }
+                        entries.append(("container:\(container)", group[0], .container, group, nil))
+                        entries += group.enumerated().map { ("volume:\($1.uuid)", $1, .volume, [], volumeColor($0)) }
                     } else {
-                        entries.append((group[0].uuid, group[0], .disk))
+                        entries.append((group[0].uuid, group[0], .disk, [], nil))
                     }
                 }
                 
@@ -413,9 +413,9 @@ internal class Preview: PreviewWrapper {
                 
                 entries.forEach { entry in
                     if let row = self.diskRows[entry.key] {
-                        row.update(entry.drive)
+                        row.update(entry.drive, volumes: entry.volumes)
                     } else {
-                        let row = DiskRow(entry.drive, kind: entry.kind)
+                        let row = DiskRow(entry.drive, kind: entry.kind, volumes: entry.volumes, color: entry.color)
                         let isFirst = self.disks.numberOfRows == 0
                         if !self.diskRows.isEmpty && entry.kind != .volume {
                             let sep = NSView()
@@ -536,7 +536,7 @@ internal class DiskRow {
     
     private let nameField: NSButton
     private let capacityField: LegendView
-    private let bar: BarChartView
+    private let bar: BarChartView = BarChartView(size: 6, horizontal: true)
     private let capacityView: NSStackView = NSStackView()
     private let fileSystemField: NSTextField
     private let ejectButton: NSButton = NSButton()
@@ -546,18 +546,21 @@ internal class DiskRow {
 
     // NSGridView unhides its cells, so a volume row puts an empty view in the eject column
     private lazy var ejectCell: NSView = self.kind == .volume ? NSView() : self.ejectButton
-    // A volume row is indented under its container
+    // A volume row is an indented legend entry of its container's segmented bar
+    private let colorView: ColorBlock?
     private lazy var nameCell: NSView = {
-        guard self.kind == .volume else { return self.nameField }
-        let view = NSStackView(views: [self.nameField])
+        guard let colorView = self.colorView else { return self.nameField }
+        let view = NSStackView(views: [colorView, self.nameField])
+        view.spacing = 6
         view.edgeInsets = NSEdgeInsets(top: 0, left: 14, bottom: 0, right: 0)
         return view
     }()
     public var cells: [NSView] { [self.nameCell, self.capacityView, self.fileSystemField, self.ejectCell] }
     
-    init(_ drive: drive, kind: Kind = .disk) {
+    init(_ drive: drive, kind: Kind = .disk, volumes: [drive] = [], color: NSColor? = nil) {
         self.uuid = drive.uuid
         self.kind = kind
+        self.colorView = kind == .volume ? ColorBlock(color: color) : nil
         self.uri = drive.path
         self.finder = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.Finder")
         
@@ -573,7 +576,6 @@ internal class DiskRow {
         if kind == .volume {
             self.nameField.contentTintColor = .secondaryLabelColor
         }
-        self.bar = BarChartView(size: kind == .volume ? 4 : 6, horizontal: true)
         
         self.fileSystemField = LabelField(kind == .volume ? "" : drive.fileSystem.uppercased())
         self.fileSystemField.font = .systemFont(ofSize: 10, weight: .regular)
@@ -590,7 +592,7 @@ internal class DiskRow {
         
         let topRow = NSStackView()
         topRow.orientation = .horizontal
-        self.capacityField = LegendView(id: drive.uuid, size: drive.size, free: drive.free, usedOnly: kind == .volume)
+        self.capacityField = LegendView(id: drive.uuid, size: drive.size, free: drive.free, mode: kind == .disk ? .switchable : kind == .container ? .used : .size)
         topRow.addArrangedSubview(self.capacityField)
         topRow.addArrangedSubview(NSView())
         
@@ -599,15 +601,17 @@ internal class DiskRow {
         self.capacityView.edgeInsets = NSEdgeInsets(top: 0, left: Constants.Settings.margin, bottom: 0, right: 0)
         
         self.capacityView.addArrangedSubview(topRow)
-        self.capacityView.addArrangedSubview(self.bar)
+        if kind != .volume {
+            self.capacityView.addArrangedSubview(self.bar)
+        }
         
-        self.update(drive)
+        self.update(drive, volumes: volumes)
         
         self.nameField.target = self
         self.ejectButton.target = self
     }
     
-    public func update(_ drive: drive) {
+    public func update(_ drive: drive, volumes: [drive] = []) {
         let name = self.kind == .container && !drive.model.isEmpty ? drive.model : drive.mediaName
         if self.nameField.title != name {
             self.nameField.title = name
@@ -619,10 +623,11 @@ internal class DiskRow {
         }
         self.ejectButton.isEnabled = drive.removable && drive.path != nil
         if self.kind == .volume {
-            let used = drive.used ?? 0
-            let percentage = drive.size != 0 ? Double(used) / Double(drive.size) : 0
-            self.capacityField.update(free: drive.size - used)
-            self.bar.setValue(ColorValue(percentage, color: percentage.usageColor()))
+            self.capacityField.update(free: drive.size - (drive.used ?? 0))
+        } else if self.kind == .container {
+            // The header is the sum of the volume rows below it
+            self.capacityField.update(free: drive.size - volumesUsed(volumes))
+            self.bar.setValues(volumeSegments(volumes, size: drive.size))
         } else {
             self.capacityField.update(free: drive.free)
             self.bar.setValue(ColorValue(drive.percentage, color: drive.percentage.usageColor()))
@@ -649,28 +654,30 @@ private class LegendView: NSStackView {
     private let size: Int64
     private var free: Int64
     private let id: String
-    private let usedOnly: Bool
+    // A container shows the used space its volume rows add up to; a volume row shows only its size
+    enum Mode { case switchable, used, size }
+    private let mode: Mode
     private var ready: Bool = false
     
     private var showUsedSpace: Bool {
-        get { self.usedOnly || Store.shared.bool(key: "\(self.id)_preview_usedSpace", defaultValue: false) }
+        get { self.mode == .used || Store.shared.bool(key: "\(self.id)_preview_usedSpace", defaultValue: false) }
         set { Store.shared.set(key: "\(self.id)_preview_usedSpace", value: newValue) }
     }
     
     private var legendField: NSTextField? = nil
     
-    public init(id: String, size: Int64, free: Int64, usedOnly: Bool = false) {
+    public init(id: String, size: Int64, free: Int64, mode: Mode = .switchable) {
         self.id = id
         self.size = size
         self.free = free
-        self.usedOnly = usedOnly
+        self.mode = mode
         
         super.init(frame: .zero)
-        self.toolTip = usedOnly ? nil : localizedString("Switch view")
+        self.toolTip = mode == .switchable ? localizedString("Switch view") : nil
         
         let legendField = TextView()
-        legendField.font = NSFont.systemFont(ofSize: usedOnly ? 10 : 11, weight: .light)
-        if usedOnly {
+        legendField.font = NSFont.systemFont(ofSize: mode == .size ? 10 : 11, weight: .light)
+        if mode == .size {
             legendField.textColor = .secondaryLabelColor
         }
         legendField.stringValue = self.legend(free: free)
@@ -705,6 +712,9 @@ private class LegendView: NSStackView {
     }
     
     private func legend(free: Int64) -> String {
+        if self.mode == .size {
+            return DiskSize(max(self.size - free, 0)).getReadableMemory()
+        }
         var value: String
         var percentage: Int
         
@@ -726,6 +736,7 @@ private class LegendView: NSStackView {
     }
     
     override func mouseEntered(with: NSEvent) {
+        guard self.mode == .switchable else { return }
         NSCursor.pointingHand.set()
     }
     
@@ -734,6 +745,7 @@ private class LegendView: NSStackView {
     }
     
     override func mouseDown(with: NSEvent) {
+        guard self.mode == .switchable else { return }
         self.showUsedSpace = !self.showUsedSpace
         
         if let view = self.legendField {

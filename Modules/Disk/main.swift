@@ -89,6 +89,23 @@ public struct drive: Codable {
     }
 }
 
+// Volumes of one APFS container share its free space and I/O, so they are shown together
+internal func containerGroups(_ drives: [drive], grouped: Bool) -> [[drive]] {
+    var result: [[drive]] = []
+    var index: [String: Int] = [:]
+    for d in drives {
+        if grouped, let container = d.container {
+            if let i = index[container] {
+                result[i].append(d)
+                continue
+            }
+            index[container] = result.count
+        }
+        result.append([d])
+    }
+    return result
+}
+
 public class Disks: Codable, RemoteType {
     private var queue: DispatchQueue = DispatchQueue(label: "eu.exelban.Stats.Disk.SynchronizedArray")
     private var _array: [drive] = []

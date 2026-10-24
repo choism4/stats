@@ -366,7 +366,18 @@ internal class Preview: PreviewWrapper {
                 let external = value.filter(where: { $0.removable }).count
                 self.allDisks?.setSubtitle("\(mounted) \(localizedString("mounted")) · \(external) \(localizedString("removable"))")
                 
-                let driveUUIDs = Set(drives.map { $0.uuid })
+                var entries: [(key: String, drive: drive, kind: DiskRow.Kind)] = []
+                let grouped = Store.shared.bool(key: "\(ModuleType.disk.stringValue)_groupVolumes", defaultValue: true)
+                for group in containerGroups(drives, grouped: grouped) {
+                    if group.count > 1, let container = group[0].container {
+                        entries.append(("container:\(container)", group[0], .container))
+                        entries += group.map { ("volume:\($0.uuid)", $0, .volume) }
+                    } else {
+                        entries.append((group[0].uuid, group[0], .disk))
+                    }
+                }
+
+                let driveUUIDs = Set(entries.map { $0.key })
                 for uuid in Array(self.diskRows.keys) where !driveUUIDs.contains(uuid) {
                     if let row = self.diskRows[uuid] {
                         row.cells.forEach { $0.removeFromSuperview() }
@@ -400,11 +411,11 @@ internal class Preview: PreviewWrapper {
                     firstRow.separatorRow = nil
                 }
                 
-                drives.forEach { drive in
-                    if let row = self.diskRows[drive.uuid] {
-                        row.update(drive)
+                entries.forEach { entry in
+                    if let row = self.diskRows[entry.key] {
+                        row.update(entry.drive)
                     } else {
-                        let row = DiskRow(drive)
+                        let row = DiskRow(entry.drive, kind: entry.kind)
                         let isFirst = self.disks.numberOfRows == 0
                         if !self.diskRows.isEmpty {
                             let sep = NSView()
@@ -426,7 +437,7 @@ internal class Preview: PreviewWrapper {
                             self.disks.column(at: 1).xPlacement = .center
                             self.disks.column(at: 2).xPlacement = .trailing
                         }
-                        self.diskRows[drive.uuid] = row
+                        self.diskRows[entry.key] = row
                     }
                 }
                 
@@ -515,7 +526,11 @@ internal class Preview: PreviewWrapper {
 }
 
 internal class DiskRow {
+    // container: the shared APFS space; volume: one volume of it, showing only its own usage
+    enum Kind { case disk, container, volume }
+
     public let uuid: String
+    private let kind: Kind
     public var gridRow: NSGridRow?
     public var separatorRow: NSGridRow?
     
@@ -529,10 +544,13 @@ internal class DiskRow {
     private let uri: URL?
     private let finder: URL?
 
-    public var cells: [NSView] { [self.nameField, self.capacityView, self.fileSystemField, self.ejectButton] }
+    // NSGridView unhides its cells, so a volume row puts an empty view in the eject column
+    private lazy var ejectCell: NSView = self.kind == .volume ? NSView() : self.ejectButton
+    public var cells: [NSView] { [self.nameField, self.capacityView, self.fileSystemField, self.ejectCell] }
     
-    init(_ drive: drive) {
+    init(_ drive: drive, kind: Kind = .disk) {
         self.uuid = drive.uuid
+        self.kind = kind
         self.uri = drive.path
         self.finder = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.Finder")
         
@@ -544,7 +562,10 @@ internal class DiskRow {
         self.nameField.toolTip = drive.mediaName
         self.nameField.title = drive.mediaName
         self.nameField.cell?.truncatesLastVisibleLine = true
-        self.nameField.font = .systemFont(ofSize: 11, weight: .semibold)
+        self.nameField.font = .systemFont(ofSize: 11, weight: kind == .volume ? .regular : .semibold)
+        if kind == .volume {
+            self.nameField.contentTintColor = .secondaryLabelColor
+        }
         
         self.fileSystemField = LabelField(drive.fileSystem.uppercased())
         self.fileSystemField.font = .systemFont(ofSize: 10, weight: .regular)
@@ -561,7 +582,7 @@ internal class DiskRow {
         
         let topRow = NSStackView()
         topRow.orientation = .horizontal
-        self.capacityField = LegendView(id: drive.uuid, size: drive.size, free: drive.free)
+        self.capacityField = LegendView(id: drive.uuid, size: drive.size, free: drive.free, usedOnly: kind == .volume)
         topRow.addArrangedSubview(self.capacityField)
         topRow.addArrangedSubview(NSView())
         
@@ -579,17 +600,25 @@ internal class DiskRow {
     }
     
     public func update(_ drive: drive) {
-        if self.nameField.title != drive.mediaName {
-            self.nameField.title = drive.mediaName
-            self.nameField.toolTip = drive.mediaName
+        let name = self.kind == .container && !drive.model.isEmpty ? drive.model : drive.mediaName
+        if self.nameField.title != name {
+            self.nameField.title = name
+            self.nameField.toolTip = name
         }
         let fs = drive.fileSystem.uppercased()
         if self.fileSystemField.stringValue != fs {
             self.fileSystemField.stringValue = fs
         }
         self.ejectButton.isEnabled = drive.removable && drive.path != nil
-        self.capacityField.update(free: drive.free)
-        self.bar.setValue(ColorValue(drive.percentage, color: drive.percentage.usageColor()))
+        if self.kind == .volume {
+            let used = drive.used ?? 0
+            let percentage = drive.size != 0 ? Double(used) / Double(drive.size) : 0
+            self.capacityField.update(free: drive.size - used)
+            self.bar.setValue(ColorValue(percentage, color: percentage.usageColor()))
+        } else {
+            self.capacityField.update(free: drive.free)
+            self.bar.setValue(ColorValue(drive.percentage, color: drive.percentage.usageColor()))
+        }
     }
     
     @objc private func openDisk() {
@@ -612,22 +641,24 @@ private class LegendView: NSStackView {
     private let size: Int64
     private var free: Int64
     private let id: String
+    private let usedOnly: Bool
     private var ready: Bool = false
-    
+
     private var showUsedSpace: Bool {
-        get { Store.shared.bool(key: "\(self.id)_preview_usedSpace", defaultValue: false) }
+        get { self.usedOnly || Store.shared.bool(key: "\(self.id)_preview_usedSpace", defaultValue: false) }
         set { Store.shared.set(key: "\(self.id)_preview_usedSpace", value: newValue) }
     }
-    
+
     private var legendField: NSTextField? = nil
-    
-    public init(id: String, size: Int64, free: Int64) {
+
+    public init(id: String, size: Int64, free: Int64, usedOnly: Bool = false) {
         self.id = id
         self.size = size
         self.free = free
+        self.usedOnly = usedOnly
         
         super.init(frame: .zero)
-        self.toolTip = localizedString("Switch view")
+        self.toolTip = usedOnly ? nil : localizedString("Switch view")
         
         let legendField = TextView()
         legendField.font = NSFont.systemFont(ofSize: 11, weight: .light)

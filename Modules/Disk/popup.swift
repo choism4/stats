@@ -141,7 +141,7 @@ internal class Popup: PopupWrapper {
         }
         
         self.lastValue = value
-        let groups = Popup.groups(value.array.filter({ $0.popupState }), grouped: self.groupVolumesState)
+        let groups = containerGroups(value.array.filter({ $0.popupState }), grouped: self.groupVolumesState)
         self.disks.subviews.filter{ $0 is DiskView }.map{ $0 as! DiskView }.forEach { (v: DiskView) in
             if !groups.contains(where: { $0.map({ $0.uuid }) == v.members }) {
                 v.removeFromSuperview()
@@ -166,23 +166,6 @@ internal class Popup: PopupWrapper {
         }
     }
     
-    // Volumes of one APFS container share its free space and I/O, so they get one card
-    internal static func groups(_ drives: [drive], grouped: Bool) -> [[drive]] {
-        var result: [[drive]] = []
-        var index: [String: Int] = [:]
-        for d in drives {
-            if grouped, let container = d.container {
-                if let i = index[container] {
-                    result[i].append(d)
-                    continue
-                }
-                index[container] = result.count
-            }
-            result.append([d])
-        }
-        return result
-    }
-
     internal func activityCallback(_ value: Disks) {
         let views = self.disks.subviews.filter{ $0 is DiskView }.map{ $0 as! DiskView }
         value.reversed().forEach { (drive: drive) in

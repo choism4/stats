@@ -59,7 +59,7 @@ internal class Popup: PopupWrapper {
         self.writeColorState = SColor.fromString(Store.shared.string(key: "\(self.title)_writeColor", defaultValue: self.writeColorState.key))
         self.reverseOrderState = Store.shared.bool(key: "\(self.title)_reverseOrder", defaultValue: self.reverseOrderState)
         self.groupVolumesState = Store.shared.bool(key: "\(self.title)_groupVolumes", defaultValue: self.groupVolumesState)
-
+        
         self.orientation = .vertical
         self.distribution = .fill
         self.spacing = 0
@@ -327,7 +327,7 @@ internal class DiskView: NSStackView {
     public let members: [String]
     private let width: CGFloat
     private let size: Int64
-
+    
     private var nameView: NameView
     private var chartView: ChartView
     private var barView: BarChartView
@@ -391,7 +391,7 @@ internal class DiskView: NSStackView {
             self.addArrangedSubview(volumesView)
         }
         self.addArrangedSubview(self.detailsView)
-
+        
         self.toggleDetails()
     }
     
@@ -765,15 +765,15 @@ private class LegendView: NSView {
 private class VolumesView: NSStackView {
     private let size: Int64
     private var rows: [String: (bar: BarChartView, value: NSTextField)] = [:]
-
+    
     public init(width: CGFloat, volumes: [drive], size: Int64) {
         self.size = size
         let rowHeight: CGFloat = 16
         super.init(frame: NSRect(x: 0, y: 0, width: width, height: rowHeight * CGFloat(volumes.count)))
-
+        
         self.orientation = .vertical
         self.spacing = 0
-
+        
         for v in volumes {
             let nameField = TextView()
             nameField.font = NSFont.systemFont(ofSize: 11, weight: .light)
@@ -781,33 +781,33 @@ private class VolumesView: NSStackView {
             nameField.toolTip = v.mediaName
             nameField.cell?.truncatesLastVisibleLine = true
             nameField.widthAnchor.constraint(equalToConstant: width * 0.4).isActive = true
-
+            
             let bar = BarChartView(frame: NSRect(x: 0, y: 0, width: 0, height: 6), horizontal: true)
             bar.heightAnchor.constraint(equalToConstant: 6).isActive = true
-
+            
             let valueField = TextView()
             valueField.font = NSFont.systemFont(ofSize: 11, weight: .regular)
             valueField.alignment = .trailing
             valueField.widthAnchor.constraint(equalToConstant: 60).isActive = true
-
+            
             let row = NSStackView(views: [nameField, bar, valueField])
             row.orientation = .horizontal
             row.alignment = .centerY
             row.spacing = Constants.Popup.spacing
             row.heightAnchor.constraint(equalToConstant: rowHeight).isActive = true
-
+            
             self.addArrangedSubview(row)
             self.rows[v.uuid] = (bar, valueField)
         }
-
+        
         self.widthAnchor.constraint(equalToConstant: self.frame.width).isActive = true
         self.heightAnchor.constraint(equalToConstant: self.frame.height).isActive = true
     }
-
+    
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
-
+    
     public func update(_ volumes: [drive], color: NSColor) {
         for v in volumes {
             guard let row = self.rows[v.uuid] else { continue }

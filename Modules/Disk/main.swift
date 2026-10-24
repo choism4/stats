@@ -63,7 +63,7 @@ public struct drive: Codable {
     var free: Int64 = 0
     var used: Int64? = nil
     var container: String? = nil
-
+    
     var activity: stats = stats()
     var smart: smart_t? = nil
     
@@ -175,7 +175,7 @@ public class Disks: Codable, RemoteType {
     func updateFreeSize(_ idx: Int, newValue: Int64) {
         self.array[idx].free = newValue
     }
-
+    
     func updateUsedSize(_ idx: Int, newValue: Int64?) {
         self.array[idx].used = newValue
     }

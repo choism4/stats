@@ -82,7 +82,7 @@ class DiskTests: XCTestCase {
         XCTAssertEqual(decoded.uuid, "volume")
         XCTAssertEqual(decoded.BSDName, "disk10s1")
     }
-
+    
     func testDiskApfsVolumesOfOneContainerShareOneCard() {
         let drives = [
             drive(uuid: "root", container: "disk3"),

@@ -376,7 +376,7 @@ internal class Preview: PreviewWrapper {
                         entries.append((group[0].uuid, group[0], .disk))
                     }
                 }
-
+                
                 let driveUUIDs = Set(entries.map { $0.key })
                 for uuid in Array(self.diskRows.keys) where !driveUUIDs.contains(uuid) {
                     if let row = self.diskRows[uuid] {
@@ -528,7 +528,7 @@ internal class Preview: PreviewWrapper {
 internal class DiskRow {
     // container: the shared APFS space; volume: one volume of it, showing only its own usage
     enum Kind { case disk, container, volume }
-
+    
     public let uuid: String
     private let kind: Kind
     public var gridRow: NSGridRow?
@@ -643,14 +643,14 @@ private class LegendView: NSStackView {
     private let id: String
     private let usedOnly: Bool
     private var ready: Bool = false
-
+    
     private var showUsedSpace: Bool {
         get { self.usedOnly || Store.shared.bool(key: "\(self.id)_preview_usedSpace", defaultValue: false) }
         set { Store.shared.set(key: "\(self.id)_preview_usedSpace", value: newValue) }
     }
-
+    
     private var legendField: NSTextField? = nil
-
+    
     public init(id: String, size: Int64, free: Int64, usedOnly: Bool = false) {
         self.id = id
         self.size = size

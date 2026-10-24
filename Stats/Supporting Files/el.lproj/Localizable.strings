@@ -230,6 +230,7 @@
 "Color of upload" = "Χρώμα της μεταφόρτωσης";
 "Monospaced font" = "Μονόχωρη γραμματοσειρά";
 "Reverse order" = "Αντίστροφη σειρά"; // translategemma:4b
+"Group volumes by disk" = "Group volumes by disk";
 "Chart history" = "Ιστορικό διαγράμματος"; // gemma4:31b
 "Default color" = "Προεπιλεγμένο"; // translategemma:4b
 "Transparent when no activity" = "Διαφανής όταν δεν υπάρχει δραστηριότητα"; // gemma4:31b

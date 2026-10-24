@@ -230,6 +230,7 @@
 "Color of upload" = "업로드 색상";
 "Monospaced font" = "고정폭 서체";
 "Reverse order" = "역순"; // translategemma:4b
+"Group volumes by disk" = "디스크별로 볼륨 묶기";
 "Chart history" = "차트 기록"; // translategemma:4b
 "Default color" = "기본"; // gemma4:31b
 "Transparent when no activity" = "활동이 없을 때 투명하게"; // gemma4:31b

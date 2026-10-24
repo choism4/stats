@@ -230,6 +230,7 @@
 "Color of upload" = "Цвят на качването";
 "Monospaced font" = "Моноширинен шрифт"; // gemma4:31b
 "Reverse order" = "Обратен ред"; // translategemma:4b
+"Group volumes by disk" = "Group volumes by disk";
 "Chart history" = "История на графиката"; // gemma4:31b
 "Default color" = "По подразбиране"; // gemma4:31b
 "Transparent when no activity" = "Прозрачен, когато няма активност"; // translategemma:4b

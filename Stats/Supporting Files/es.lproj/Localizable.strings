@@ -230,6 +230,7 @@
 "Color of upload" = "Color de subida";
 "Monospaced font" = "Fuente monoespaciada";
 "Reverse order" = "Orden inverso";
+"Group volumes by disk" = "Group volumes by disk";
 "Chart history" = "Historial del gráfico";
 "Default color" = "Color por defecto";
 "Transparent when no activity" = "Transparente cuando no hay actividad";

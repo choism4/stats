@@ -230,6 +230,7 @@
 "Color of upload" = "Farge for opplasting";
 "Monospaced font" = "Skrifttype med fast bredde";
 "Reverse order" = "Reversert rekkefølge";
+"Group volumes by disk" = "Group volumes by disk";
 "Chart history" = "Grafhistorikk"; // translategemma:4b
 "Default color" = "Standard"; // translategemma:4b
 "Transparent when no activity" = "Gjennomsiktig når ingen aktivitet"; // gemma4:31b

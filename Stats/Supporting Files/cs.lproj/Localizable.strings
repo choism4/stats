@@ -230,6 +230,7 @@
 "Color of upload" = "Barva nahrávání";
 "Monospaced font" = "Font s konstantní šířkou"; // gemma4:31b
 "Reverse order" = "Obrácené pořadí"; // gemma4:31b
+"Group volumes by disk" = "Group volumes by disk";
 "Chart history" = "Historie grafu"; // translategemma:4b
 "Default color" = "Výchozí"; // translategemma:4b
 "Transparent when no activity" = "Průhledný, když není žádná aktivita"; // translategemma:4b

@@ -230,6 +230,7 @@
 "Color of upload" = "สีของการอัพโหลด";
 "Monospaced font" = "แบบอักษรโมโนสเปซ";
 "Reverse order" = "ลำดับย้อนกลับ"; // translategemma:4b
+"Group volumes by disk" = "Group volumes by disk";
 "Chart history" = "ประวัติกราฟ"; // gemma4:31b
 "Default color" = "ค่าเริ่มต้น"; // translategemma:4b
 "Transparent when no activity" = "โปร่งใสเมื่อไม่มีกิจกรรม"; // gemma4:31b

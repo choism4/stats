@@ -230,6 +230,7 @@
 "Color of upload" = "لون الرفع";
 "Monospaced font" = "خط ذو تساوي المسافات";
 "Reverse order" = "ترتيب عكسي";
+"Group volumes by disk" = "Group volumes by disk";
 "Chart history" = "مدة المخطط";
 "Default color" = "افتراضي"; // gemma4:31b
 "Transparent when no activity" = "شفاف عند عدم وجود نشاط"; // gemma4:31b

@@ -20,6 +20,8 @@ internal class Popup: PopupWrapper {
     private var writeColorState: SColor = .secondRed
     private var writeColor: NSColor { self.writeColorState.additional as? NSColor ?? NSColor.systemBlue }
     private var reverseOrderState: Bool = false
+    private var groupVolumesState: Bool = true
+    private var lastValue: Disks? = nil
     private var base: DataSizeBase {
         DataSizeBase(rawValue: Store.shared.string(key: "\(self.title)_base", defaultValue: DataSizeBase.byte.rawValue)) ?? .byte
     }
@@ -56,7 +58,8 @@ internal class Popup: PopupWrapper {
         self.readColorState = SColor.fromString(Store.shared.string(key: "\(self.title)_readColor", defaultValue: self.readColorState.key))
         self.writeColorState = SColor.fromString(Store.shared.string(key: "\(self.title)_writeColor", defaultValue: self.writeColorState.key))
         self.reverseOrderState = Store.shared.bool(key: "\(self.title)_reverseOrder", defaultValue: self.reverseOrderState)
-        
+        self.groupVolumesState = Store.shared.bool(key: "\(self.title)_groupVolumes", defaultValue: self.groupVolumesState)
+
         self.orientation = .vertical
         self.distribution = .fill
         self.spacing = 0
@@ -137,18 +140,22 @@ internal class Popup: PopupWrapper {
             }
         }
         
+        self.lastValue = value
+        let groups = Popup.groups(value.array.filter({ $0.popupState }), grouped: self.groupVolumesState)
         self.disks.subviews.filter{ $0 is DiskView }.map{ $0 as! DiskView }.forEach { (v: DiskView) in
-            if !value.array.filter({ $0.popupState }).map({$0.uuid}).contains(v.uuid) {
+            if !groups.contains(where: { $0.map({ $0.uuid }) == v.members }) {
                 v.removeFromSuperview()
             }
         }
-        value.array.filter({ $0.popupState }).forEach { (drive: drive) in
-            if let view = self.disks.subviews.filter({ $0 is DiskView }).map({ $0 as! DiskView }).first(where: { $0.uuid == drive.uuid }) {
-                view.update(drive)
+        groups.forEach { (group: [drive]) in
+            let drive = group[0]
+            if let view = self.disks.subviews.filter({ $0 is DiskView }).map({ $0 as! DiskView }).first(where: { $0.members == group.map({ $0.uuid }) }) {
+                view.update(drive, volumes: group)
             } else {
                 let view = DiskView(
                     width: Constants.Popup.width,
                     drive: drive,
+                    volumes: group,
                     resize: self.recalculateHeight
                 )
                 self.disks.addArrangedSubview(view)
@@ -159,6 +166,23 @@ internal class Popup: PopupWrapper {
         }
     }
     
+    // Volumes of one APFS container share its free space and I/O, so they get one card
+    internal static func groups(_ drives: [drive], grouped: Bool) -> [[drive]] {
+        var result: [[drive]] = []
+        var index: [String: Int] = [:]
+        for d in drives {
+            if grouped, let container = d.container {
+                if let i = index[container] {
+                    result[i].append(d)
+                    continue
+                }
+                index[container] = result.count
+            }
+            result.append([d])
+        }
+        return result
+    }
+
     internal func activityCallback(_ value: Disks) {
         let views = self.disks.subviews.filter{ $0 is DiskView }.map{ $0 as! DiskView }
         value.reversed().forEach { (drive: drive) in
@@ -249,6 +273,10 @@ internal class Popup: PopupWrapper {
             PreferencesRow(localizedString("Reverse order"), component: switchView(
                 action: #selector(self.toggleReverseOrder),
                 state: self.reverseOrderState
+            )),
+            PreferencesRow(localizedString("Group volumes by disk"), component: switchView(
+                action: #selector(self.toggleGroupVolumes),
+                state: self.groupVolumesState
             ))
         ]))
         
@@ -295,6 +323,13 @@ internal class Popup: PopupWrapper {
         Store.shared.set(key: "\(self.title)_reverseOrder", value: self.reverseOrderState)
         self.display()
     }
+    @objc private func toggleGroupVolumes(_ sender: NSControl) {
+        self.groupVolumesState = controlState(sender)
+        Store.shared.set(key: "\(self.title)_groupVolumes", value: self.groupVolumesState)
+        if let value = self.lastValue {
+            self.capacityCallback(value)
+        }
+    }
     @objc private func toggleDisk(_ sender: NSControl) {
         guard let id = sender.identifier else { return }
         Store.shared.set(key: "\(self.title)_\(id.rawValue)_popup", value: controlState(sender))
@@ -306,13 +341,15 @@ internal class DiskView: NSStackView {
     
     public var name: String
     public var uuid: String
+    public let members: [String]
     private let width: CGFloat
     private let size: Int64
-    
+
     private var nameView: NameView
     private var chartView: ChartView
     private var barView: BarChartView
     private var legendView: LegendView
+    private var volumesView: VolumesView?
     private var detailsView: DetailsView
     
     private var detailsState: Bool {
@@ -324,14 +361,18 @@ internal class DiskView: NSStackView {
         SColor.fromString(Store.shared.string(key: "\(ModuleType.disk.stringValue)_mainColor", defaultValue: SColor.secondBlue.key)).additional as! NSColor
     }
     
-    init(width: CGFloat, drive d: drive, resize: @escaping () -> Void) {
+    init(width: CGFloat, drive d: drive, volumes: [drive], resize: @escaping () -> Void) {
         self.sizeCallback = resize
         self.uuid = d.uuid
-        self.name = d.mediaName
+        self.members = volumes.map({ $0.uuid })
+        self.name = volumes.count > 1 && !d.model.isEmpty ? d.model : d.mediaName
         self.width = width
         self.size = d.size
         let innerWidth: CGFloat = width - (Constants.Popup.margins * 2)
-        self.nameView = NameView(width: innerWidth, uuid: d.uuid, name: d.mediaName, path: d.path)
+        self.nameView = NameView(width: innerWidth, uuid: d.uuid, name: self.name, path: d.path)
+        if volumes.count > 1 {
+            self.volumesView = VolumesView(width: innerWidth, volumes: volumes, size: d.size)
+        }
         self.chartView = ChartView(width: innerWidth)
         self.barView = BarChartView(frame: NSRect(x: 0, y: 0, width: innerWidth, height: 8), horizontal: true)
         self.barView.widthAnchor.constraint(equalToConstant: innerWidth).isActive = true
@@ -362,8 +403,12 @@ internal class DiskView: NSStackView {
         self.addArrangedSubview(self.chartView)
         self.addArrangedSubview(self.barView)
         self.addArrangedSubview(self.legendView)
+        if let volumesView = self.volumesView {
+            volumesView.update(volumes, color: self.mainColor)
+            self.addArrangedSubview(volumesView)
+        }
         self.addArrangedSubview(self.detailsView)
-        
+
         self.toggleDetails()
     }
     
@@ -375,11 +420,12 @@ internal class DiskView: NSStackView {
         self.layer?.backgroundColor = (isDarkMode ? NSColor(red: 17/255, green: 17/255, blue: 17/255, alpha: 0.25) : NSColor(red: 245/255, green: 245/255, blue: 245/255, alpha: 1)).cgColor
     }
     
-    public func update(_ value: drive) {
+    public func update(_ value: drive, volumes: [drive]) {
         self.legendView.update(free: value.free)
         if size != 0 {
             self.barView.setValue(ColorValue(Double(self.size - value.free) / Double(self.size), color: self.mainColor))
         }
+        self.volumesView?.update(volumes, color: self.mainColor)
         self.detailsView.update(details: value)
     }
     
@@ -729,6 +775,63 @@ private class LegendView: NSView {
         }
         if let view = self.percentageField {
             view.stringValue = self.percentage(free: self.free)
+        }
+    }
+}
+
+private class VolumesView: NSStackView {
+    private let size: Int64
+    private var rows: [String: (bar: BarChartView, value: NSTextField)] = [:]
+
+    public init(width: CGFloat, volumes: [drive], size: Int64) {
+        self.size = size
+        let rowHeight: CGFloat = 16
+        super.init(frame: NSRect(x: 0, y: 0, width: width, height: rowHeight * CGFloat(volumes.count)))
+
+        self.orientation = .vertical
+        self.spacing = 0
+
+        for v in volumes {
+            let nameField = TextView()
+            nameField.font = NSFont.systemFont(ofSize: 11, weight: .light)
+            nameField.stringValue = v.mediaName
+            nameField.toolTip = v.mediaName
+            nameField.cell?.truncatesLastVisibleLine = true
+            nameField.widthAnchor.constraint(equalToConstant: width * 0.4).isActive = true
+
+            let bar = BarChartView(frame: NSRect(x: 0, y: 0, width: 0, height: 6), horizontal: true)
+            bar.heightAnchor.constraint(equalToConstant: 6).isActive = true
+
+            let valueField = TextView()
+            valueField.font = NSFont.systemFont(ofSize: 11, weight: .regular)
+            valueField.alignment = .trailing
+            valueField.widthAnchor.constraint(equalToConstant: 60).isActive = true
+
+            let row = NSStackView(views: [nameField, bar, valueField])
+            row.orientation = .horizontal
+            row.alignment = .centerY
+            row.spacing = Constants.Popup.spacing
+            row.heightAnchor.constraint(equalToConstant: rowHeight).isActive = true
+
+            self.addArrangedSubview(row)
+            self.rows[v.uuid] = (bar, valueField)
+        }
+
+        self.widthAnchor.constraint(equalToConstant: self.frame.width).isActive = true
+        self.heightAnchor.constraint(equalToConstant: self.frame.height).isActive = true
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    public func update(_ volumes: [drive], color: NSColor) {
+        for v in volumes {
+            guard let row = self.rows[v.uuid] else { continue }
+            row.value.stringValue = v.used.map({ DiskSize($0).getReadableMemory() }) ?? "-"
+            if self.size != 0 {
+                row.bar.setValue(ColorValue(Double(v.used ?? 0) / Double(self.size), color: color))
+            }
         }
     }
 }

@@ -230,6 +230,7 @@
 "Color of upload" = "Цвет выгрузки";
 "Monospaced font" = "Моноширинный шрифт";
 "Reverse order" = "Обратный порядок";
+"Group volumes by disk" = "Group volumes by disk";
 "Chart history" = "История графика";
 "Default color" = "По умолчанию";
 "Transparent when no activity" = "Прозрачный когда нет активности";

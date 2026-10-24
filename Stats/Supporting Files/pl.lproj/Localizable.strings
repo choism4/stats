@@ -230,6 +230,7 @@
 "Color of upload" = "Kolor wysyłki";
 "Monospaced font" = "Czcionka o stałej szerokości";
 "Reverse order" = "Odwrotna kolejność";
+"Group volumes by disk" = "Group volumes by disk";
 "Chart history" = "Historia wykresu";
 "Default color" = "Domyślny";
 "Transparent when no activity" = "Przejrzysty gdy nie ma żadnej aktywności";

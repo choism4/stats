@@ -230,6 +230,7 @@
 "Color of upload" = "Färg för uppladdning";
 "Monospaced font" = "Monospace-typsnitt";
 "Reverse order" = "Omvänd ordning";
+"Group volumes by disk" = "Group volumes by disk";
 "Chart history" = "Diagramhistorik";
 "Default color" = "Standardfärg";
 "Transparent when no activity" = "Genomskinlig vid inaktivitet";

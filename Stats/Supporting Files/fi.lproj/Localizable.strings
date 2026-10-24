@@ -230,6 +230,7 @@
 "Color of upload" = "Lähetyksen väri";
 "Monospaced font" = "Kiinteäleveyksinen fontti";
 "Reverse order" = "Käänteinen järjestys";
+"Group volumes by disk" = "Group volumes by disk";
 "Chart history" = "Kaavion historia";
 "Default color" = "Oletusväri";
 "Transparent when no activity" = "Läpinäkyvä, kun ei ole toimintaa";

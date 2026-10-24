@@ -230,6 +230,7 @@
 "Color of upload" = "Barva oddajanja";
 "Monospaced font" = "Pisava s fiksno širino";
 "Reverse order" = "Obratni vrstni red";
+"Group volumes by disk" = "Group volumes by disk";
 "Chart history" = "Zgodovina grafa";
 "Default color" = "Privzeto";
 "Transparent when no activity" = "Prosojno, ko ni dejavnosti";

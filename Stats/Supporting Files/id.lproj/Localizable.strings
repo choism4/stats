@@ -230,6 +230,7 @@
 "Color of upload" = "Warna pada unggahan";
 "Monospaced font" = "Fon monospasi";
 "Reverse order" = "Urutan terbalik"; // translategemma:4b
+"Group volumes by disk" = "Group volumes by disk";
 "Chart history" = "Riwayat grafik"; // gemma4:31b
 "Default color" = "Nilai default"; // translategemma:4b
 "Transparent when no activity" = "Transparan saat tidak ada aktivitas"; // translategemma:4b

@@ -83,6 +83,7 @@ internal class CapacityReader: Reader<Disks> {
                             } else {
                                 if let path = d.path {
                                     self.list.updateFreeSize(idx, newValue: self.diskSpaceInBytes(path, fileSystem: d.fileSystem).free)
+                                    self.list.updateUsedSize(idx, newValue: volumeSpaceUsed(path))
                                 }
                                 continue
                             }
@@ -93,6 +94,7 @@ internal class CapacityReader: Reader<Disks> {
                                 let space = self.diskSpaceInBytes(path, fileSystem: d.fileSystem)
                                 d.free = space.free
                                 d.size = space.total
+                                d.used = volumeSpaceUsed(path)
                             }
                             guard d.size != 0 else {
                                 continue
@@ -320,6 +322,16 @@ internal func getDeviceIOParent(_ media: io_registry_entry_t) -> io_registry_ent
     return driver
 }
 
+// Space used by this volume alone; statfs reports the whole APFS container
+private func volumeSpaceUsed(_ path: URL) -> Int64? {
+    var attributes = attrlist()
+    attributes.bitmapcount = u_short(ATTR_BIT_MAP_COUNT)
+    attributes.volattr = attrgroup_t(ATTR_VOL_INFO) | attrgroup_t(ATTR_VOL_SPACEUSED)
+    var buffer = [UInt8](repeating: 0, count: MemoryLayout<UInt32>.size + MemoryLayout<off_t>.size)
+    guard getattrlist(path.path, &attributes, &buffer, buffer.count, 0) == 0 else { return nil }
+    return buffer.withUnsafeBytes { $0.loadUnaligned(fromByteOffset: MemoryLayout<UInt32>.size, as: off_t.self) }
+}
+
 private func driveIdentityChanged(_ d: drive, _ url: URL, _ disk: DADisk) -> Bool {
     if d.path?.path != url.path {
         return true
@@ -390,6 +402,10 @@ private func driveDetails(_ disk: DADisk, removableState: Bool) -> drive? {
             }
             if let volumeKind = dict[kDADiskDescriptionVolumeKindKey as String] as? String {
                 d.fileSystem = volumeKind
+            }
+            // APFS volumes of one container share its free space and its I/O driver
+            if d.fileSystem == "apfs", let whole = DADiskCopyWholeDisk(disk), let name = DADiskGetBSDName(whole) {
+                d.container = String(cString: name)
             }
             if let writable = dict[kDADiskDescriptionMediaWritableKey as String] as? Bool {
                 d.writable = writable

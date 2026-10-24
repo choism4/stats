@@ -230,6 +230,7 @@
 "Color of upload" = "Üleslaadimise värv";
 "Monospaced font" = "Fikseeritud laiusega kirjastiil";
 "Reverse order" = "Vastupidises järjekorras";
+"Group volumes by disk" = "Group volumes by disk";
 "Chart history" = "Graafiku ajalugu";
 "Default color" = "Vaikevärv";
 "Transparent when no activity" = "Läbipaistev, kui pole tegevust";

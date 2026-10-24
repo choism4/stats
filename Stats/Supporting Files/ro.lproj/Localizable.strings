@@ -230,6 +230,7 @@
 "Color of upload" = "Culoarea încărcării"; // translategemma:4b
 "Monospaced font" = "Font monospațiat"; // gemma4:31b
 "Reverse order" = "Ordine invers"; // gemma4:31b
+"Group volumes by disk" = "Group volumes by disk";
 "Chart history" = "Istoricul graficului"; // gemma4:31b
 "Default color" = "Implicit"; // translategemma:4b
 "Transparent when no activity" = "Transparent când nu există activitate"; // gemma4:31b

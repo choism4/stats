@@ -230,6 +230,7 @@
 "Color of upload" = "Yükleme rengi";
 "Monospaced font" = "Eş aralıklı yazı tipi";
 "Reverse order" = "Sıralamayı tersine çevir";
+"Group volumes by disk" = "Group volumes by disk";
 "Chart history" = "Grafik geçmişi";
 "Default color" = "Varsayılan renk";
 "Transparent when no activity" = "Etkinlik yokken saydam";

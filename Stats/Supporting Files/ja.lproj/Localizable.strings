@@ -230,6 +230,7 @@
 "Color of upload" = "アップロードの色";
 "Monospaced font" = "等幅フォント";
 "Reverse order" = "逆順"; // translategemma:4b
+"Group volumes by disk" = "Group volumes by disk";
 "Chart history" = "グラフの履歴"; // translategemma:4b
 "Default color" = "デフォルト"; // translategemma:4b
 "Transparent when no activity" = "アクティビティがない時に透明"; // gemma4:31b

@@ -230,6 +230,7 @@
 "Color of upload" = "Color de càrrega";
 "Monospaced font" = "Tipus de lletra monoespaiat";
 "Reverse order" = "Canvia l'ordre";
+"Group volumes by disk" = "Group volumes by disk";
 "Chart history" = "Historial de gràfics";
 "Default color" = "Color per determinat";
 "Transparent when no activity" = "Transparent quan no hi hagi activitat";

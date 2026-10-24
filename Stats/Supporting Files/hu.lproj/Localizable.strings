@@ -230,6 +230,7 @@
 "Color of upload" = "Feltöltés színe";
 "Monospaced font" = "Mono betűtípus";
 "Reverse order" = "Fordított sorrend";
+"Group volumes by disk" = "Group volumes by disk";
 "Chart history" = "Grafikon története"; // gemma4:31b
 "Default color" = "Alapértelmezett"; // gemma4:31b
 "Transparent when no activity" = "Átlátszó, ha nincs aktivitás"; // gemma4:31b

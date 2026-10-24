@@ -230,6 +230,7 @@
 "Color of upload" = "Couleur du téléversement";
 "Monospaced font" = "Police à espacement fixe";
 "Reverse order" = "Inverser l'ordre";
+"Group volumes by disk" = "Group volumes by disk";
 "Chart history" = "Historique du graphique";
 "Default color" = "Par défaut";
 "Transparent when no activity" = "Transparent en l'absence d'activité";

@@ -230,6 +230,7 @@
 "Color of upload" = "上传颜色";
 "Monospaced font" = "等宽字体";
 "Reverse order" = "调转顺序";
+"Group volumes by disk" = "Group volumes by disk";
 "Chart history" = "图表统计时长";
 "Default color" = "默认";
 "Transparent when no activity" = "无活动时保持透明";

@@ -230,6 +230,7 @@
 "Color of upload" = "Colore dell'upload";
 "Monospaced font" = "Font a larghezza fissa";
 "Reverse order" = "Inverti ordine";
+"Group volumes by disk" = "Group volumes by disk";
 "Chart history" = "Durata grafico";
 "Default color" = "Predefinito"; // translategemma:4b
 "Transparent when no activity" = "Trasparente in assenza di attività";

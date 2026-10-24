@@ -230,6 +230,7 @@
 "Color of upload" = "צבע של העלאה";
 "Monospaced font" = "גופן ברוחב קבוע"; // gemma4:31b
 "Reverse order" = "סדר הפוך"; // translategemma:4b
+"Group volumes by disk" = "Group volumes by disk";
 "Chart history" = "היסטוריית הגרף"; // gemma4:31b
 "Default color" = "ברירת מחדל"; // translategemma:4b
 "Transparent when no activity" = "שקוף כשאין פעילות"; // gemma4:31b

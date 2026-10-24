@@ -230,6 +230,7 @@
 "Color of upload" = "আপলোডের রঙ";
 "Monospaced font" = "মনোস্পেসড ফন্ট";
 "Reverse order" = "বিপরীত ক্রম";
+"Group volumes by disk" = "Group volumes by disk";
 "Chart history" = "চার্ট ইতিহাস";
 "Default color" = "ডিফল্ট রঙ";
 "Transparent when no activity" = "কোনো কার্যক্রম না থাকলে স্বচ্ছ";

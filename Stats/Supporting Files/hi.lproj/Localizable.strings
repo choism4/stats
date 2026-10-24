@@ -230,6 +230,7 @@
 "Color of upload" = "अपलोड का रंग";
 "Monospaced font" = "मोनोस्पेस्ड फ़ॉन्ट";
 "Reverse order" = "विपरीत क्रम"; // gemma4:31b
+"Group volumes by disk" = "Group volumes by disk";
 "Chart history" = "चार्ट इतिहास"; // gemma4:31b
 "Default color" = "पूर्वनिर्धारित"; // gemma4:31b
 "Transparent when no activity" = "कोई गतिविधि न होने पर पारदर्शी"; // gemma4:31b
